@@ -31,12 +31,30 @@ axis(bounds); % Use the bounds from params
 xlabel('X Position (m)'); ylabel('Y Position (m)');
 title('Coordinated Interception: Real-Time Animation');
 
+
+% Store the current phase to detect when a switch happens
+lastPhase = -1;
+
 % --- 5. Simulation Loop ---
 tic; 
 for s = 1:sim_steps
     % Calculate dynamic dt
     dt = toc; 
     tic; 
+
+    currentTime = s * dt;
+
+    % 1. Determine Topology
+    currentPhase = mod(floor(currentTime / 1.5), 3);
+    newEdges = getTopology(currentTime, n_robots);
+
+    % Update the internal digraph object
+    currentGraph = digraph(newEdges(:,1), newEdges(:,2), [], currentGraph.Nodes);
+
+    
+
+
+
 
     % Safety: Prevent math errors if dt is weird
     if dt < 0.001 || dt > 0.1, dt = 0.01; end
@@ -71,6 +89,17 @@ for s = 1:sim_steps
     % If it finds a bad value, it replaces it with 0.0
     if ~all(isfinite(allPos(:)))
         allPos(~isfinite(allPos)) = 0; 
+    end
+
+    % 2. Update Graph Plot ONLY if the topology switched (for performance)
+    if currentPhase ~= lastPhase
+        %allPos = vertcat(currentGraph.Nodes.Obj.pos);
+        % Redraw the graph to update arrows
+        delete(hPlot); 
+        hPlot = plot(currentGraph, 'XData', allPos(:,1), 'YData', allPos(:,2), ...
+            'MarkerSize', 8, 'LineWidth', 1.5);
+        lastPhase = currentPhase;
+        title(['Time: ' num2str(currentTime) 's | Topology Phase: ' num2str(currentPhase)]);
     end
 
     
