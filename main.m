@@ -52,7 +52,7 @@ for s = 1:sim_steps
         
     end
 
-    
+
     %if mod(s, 10) == 0
     %    t_values = [currentGraph.Nodes.Obj.t_tilde];
     %    fprintf('Step %d | t_tilde: [%s]\n', s, sprintf(' %.2f ', t_values));
@@ -66,6 +66,14 @@ for s = 1:sim_steps
     % 1. Extract all positions into an Nx2 matrix
     allPos = vertcat(currentGraph.Nodes.Obj.pos);
 
+    % 2. THE FIREWALL:
+    % Check if any value is NOT finite (Inf or NaN)
+    % If it finds a bad value, it replaces it with 0.0
+    if ~all(isfinite(allPos(:)))
+        allPos(~isfinite(allPos)) = 0; 
+    end
+
+    
     % 2. Update ONLY the X and Y data. 
     % The arrows will follow the nodes automatically!
     hPlot.XData = allPos(:,1);
@@ -74,12 +82,16 @@ for s = 1:sim_steps
     % 3. Leave a breadcrumb trail (Optional)
     plot(allPos(:,1), allPos(:,2), 'k.', 'MarkerSize', 1);
 
-    % Check if simulation should end
-    if all([currentGraph.Nodes.Obj.distToTarget] < 1.5)
-        title('TARGET INTERCEPTED');
-        break;
+    % --- Step D: Exit Condition ---
+    % Check if ALL robots have reached the goal
+    % We use 'all' on the array of isCaptured flags
+
+    if all([currentGraph.Nodes.Obj.isCaptured])
+        %fprintf('\n[SUCCESS] All robots have intercepted the target at time %.2fs\n', currentTime);
+        break; % This exits the 'for s = 1:sim_steps' loop immediately
     end
 
+    
     % Use drawnow to refresh the screen
     drawnow; 
 end

@@ -10,6 +10,7 @@ classdef Robot < handle
         a_ideal = 0      % Ideal lateral acceleration (a')
         t_tilde = 0      % Estimated time of interception
         distToTarget = 0 % Distance to target
+        isCaptured = false;
 
         % --- History Storage ---
         %timeHistory = []
@@ -35,9 +36,17 @@ classdef Robot < handle
             % Heading: gamma = lambda - theta
             obj.gamma = lambda - theta0;
             obj.vel = [cos(obj.gamma), sin(obj.gamma)] * obj.v;
+
+            %isCaptured
+            isCaptured = false;
         end
         
         function updateLogic(obj)
+
+            if obj.isCaptured
+                return; % Do nothing if the robot has arrived
+            end
+
             % Sequence: Ideal Accel -> Time of Interception -> Lateral Accel
             obj.updateIdealAccel();
             obj.updateTimeOfInterception();
@@ -53,6 +62,8 @@ classdef Robot < handle
             else
                 obj.a_ideal = 0;
             end
+
+            obj.a_ideal = max(min(obj.a_ideal, 1000), -1000);
         end
         
         % 2. Calculate Estimated Time of Interception (t_tilde)
@@ -94,6 +105,24 @@ classdef Robot < handle
         
         % Final State Update (Physics and Geometry)
         function updateStates(obj, dt)
+
+            % 1. If already captured, don't move or calculate anything
+            if obj.isCaptured
+                return; 
+            end
+
+            % 2. CHECK CAPTURE CONDITION
+            % Since robots are fast (92m/s), we use a threshold of 2.0 meters
+            if obj.distToTarget < 3
+                obj.isCaptured = true;
+                obj.v = 0;           % Set speed to 0
+                obj.vel = [0, 0];    % Set velocity vector to 0
+                obj.a = 0;           % Set acceleration to 0
+                obj.a_ideal = 0;
+                obj.t_tilde = 0;     % Time remaining is now 0
+            end
+
+
             global targetPos
             
             % 1. Update Heading (gamma_dot = a/v)
@@ -109,7 +138,18 @@ classdef Robot < handle
             
             % 4. Update Theta (theta = lambda - gamma)
             lambda = atan2(los_vec(2), los_vec(1));
-            obj.theta = lambda - obj.gamma;
+            %obj.theta = lambda - obj.gamma;
+
+            % 3. Calculate Theta (Lead angle)
+            % We subtract gamma from lambda, THEN wrap to ensure result is in (-pi, pi)
+            obj.theta = atan2(sin(lambda - obj.gamma), cos(lambda - obj.gamma));
+
+            % 4. Enforce the non-zero constraint \ {0}
+            if abs(obj.theta) < 1e-6
+                obj.theta = 1e-6 * sign(obj.theta + eps); 
+            end
+
+            
 
             % --- Record History ---
             %obj.timeHistory(end+1) = currentTime;
