@@ -13,4 +13,4 @@ sim_steps = 3000;
 
 % Correct axis to see everything: [minX-50 maxX+50 minY-50 maxY+50]
 % Based on your numbers: [-210 160 -150 350]
-bounds = [-220 180 -150 350];
+bounds = [-500 500 -500 500];

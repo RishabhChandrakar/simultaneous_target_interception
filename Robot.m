@@ -10,6 +10,13 @@ classdef Robot < handle
         a_ideal = 0      % Ideal lateral acceleration (a')
         t_tilde = 0      % Estimated time of interception
         distToTarget = 0 % Distance to target
+
+        % --- History Storage ---
+        %timeHistory = []
+        %posHistory = []   % Will store [x, y]
+        %velHistory = []   % Will store [vx, vy]
+        %accelHistory = [] % Will store lateral acceleration 'a'
+
     end
     
     methods
@@ -103,6 +110,13 @@ classdef Robot < handle
             % 4. Update Theta (theta = lambda - gamma)
             lambda = atan2(los_vec(2), los_vec(1));
             obj.theta = lambda - obj.gamma;
+
+            % --- Record History ---
+            %obj.timeHistory(end+1) = currentTime;
+            %obj.posHistory(end+1, :) = obj.pos;
+            %obj.velHistory(end+1, :) = obj.vel;
+            %obj.accelHistory(end+1) = obj.a;
+            
         end
     end
 end

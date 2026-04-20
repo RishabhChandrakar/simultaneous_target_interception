@@ -49,7 +49,18 @@ for s = 1:sim_steps
     % --- Step B: State Update ---
     for i = 1:n_robots
         currentGraph.Nodes.Obj(i).updateStates(dt);
+        
     end
+
+    
+    %if mod(s, 10) == 0
+    %    t_values = [currentGraph.Nodes.Obj.t_tilde];
+    %    fprintf('Step %d | t_tilde: [%s]\n', s, sprintf(' %.2f ', t_values));
+    %end
+
+    % Extract theta values, convert to degrees, and print
+    theta_values = rad2deg([currentGraph.Nodes.Obj.theta]);
+    fprintf('Step %4d | Theta (deg): [%s]\n', s, sprintf(' %6.2f ', theta_values));
 
     % --- Step C: Animation Update ---
     % 1. Extract all positions into an Nx2 matrix
@@ -72,3 +83,4 @@ for s = 1:sim_steps
     % Use drawnow to refresh the screen
     drawnow; 
 end
+
