@@ -1,0 +1,33 @@
+clear; clc; close all;
+params; 
+
+% 1. Create Robots
+robots = Robot.empty(n_robots, 0);
+for i = 1:n_robots
+    robots(i) = Robot(i, initial_positions(i,:), initial_speeds(i), initial_thetas(i));
+end
+
+% 2. Initialize Graph Table
+currentGraph = digraph();
+nodeTable = table(robots', 'VariableNames', {'Obj'});
+currentGraph = addnode(currentGraph, nodeTable);
+
+% 3. Setup Static Topology
+staticEdges = getTopology(0, n_robots);
+currentGraph = digraph(staticEdges(:,1), staticEdges(:,2), [], currentGraph.Nodes);
+
+% 4. Visualization Setup
+figure('Color', 'w', 'Name', 'Robot Interception Simulation');
+hold on; grid on;
+
+% Plot the target
+plot(targetPos(1), targetPos(2), 'rp', 'MarkerSize', 15, 'MarkerFaceColor', 'r');
+
+% Initialize the Graph Plot
+hPlot = plot(currentGraph, 'XData', initial_positions(:,1), 'YData', initial_positions(:,2), ...
+    'LineWidth', 1.5, 'NodeFontSize', 10, 'MarkerSize', 7);
+
+axis(bounds); % Use the bounds from params
+xlabel('X Position (m)'); ylabel('Y Position (m)');
+title('Coordinated Interception: Real-Time Animation');
+
