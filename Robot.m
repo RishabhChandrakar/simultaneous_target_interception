@@ -13,8 +13,9 @@ classdef Robot < handle
         isCaptured = false;
 
         % --- History Storage ---
-        %timeHistory = []
-        %posHistory = []   % Will store [x, y]
+        timeHistory = []
+        posHistory = []   % Will store [x, y]
+        tTildeHistory = [] % Add this
         %velHistory = []   % Will store [vx, vy]
         %accelHistory = [] % Will store lateral acceleration 'a'
 
@@ -39,6 +40,9 @@ classdef Robot < handle
 
             %isCaptured
             isCaptured = false;
+
+            % Initialize history with the starting position
+            obj.posHistory = p0;
         end
         
         function updateLogic(obj)
@@ -104,7 +108,9 @@ classdef Robot < handle
         end
         
         % Final State Update (Physics and Geometry)
-        function updateStates(obj, dt)
+        function updateStates(obj, dt, currentTime)
+
+            global targetPos
 
             % 1. If already captured, don't move or calculate anything
             if obj.isCaptured
@@ -120,6 +126,14 @@ classdef Robot < handle
                 obj.a = 0;           % Set acceleration to 0
                 obj.a_ideal = 0;
                 obj.t_tilde = 0;     % Time remaining is now 0
+
+                obj.pos = targetPos; % Snap to target [0,0]
+                obj.posHistory(end+1, :) = targetPos; % Record final point
+
+                obj.timeHistory(end+1) = currentTime;
+                obj.tTildeHistory(end+1) = obj.t_tilde;
+
+
             end
 
 
@@ -149,10 +163,15 @@ classdef Robot < handle
                 obj.theta = 1e-6 * sign(obj.theta + eps); 
             end
 
+            % --- ADD THIS LINE TO RECORD HISTORY ---
+            obj.posHistory(end+1, :) = obj.pos;
+            obj.timeHistory(end+1) = currentTime;
+            obj.tTildeHistory(end+1) = obj.t_tilde;
+
             
 
             % --- Record History ---
-            %obj.timeHistory(end+1) = currentTime;
+            %
             %obj.posHistory(end+1, :) = obj.pos;
             %obj.velHistory(end+1, :) = obj.vel;
             %obj.accelHistory(end+1) = obj.a;
