@@ -99,11 +99,17 @@ classdef Robot < handle
                 % Logic: a = a' IF my t_tilde is the maximum in my neighborhood
                 max_neighbor_t = max(neighbor_t_tildes);
                 
-                if obj.t_tilde >= max_neighbor_t
+
+                % to prevent the zig zag behaviour of t_tilde among robots 
+
+                % If my time is within 0.1s of the leader, I have reached consensus.
+                % I should now just follow my curve (a_ideal) to the target.
+                if obj.t_tilde >= (max_neighbor_t - 0.1)
                     obj.a = obj.a_ideal;
                 else
-                    obj.a = 0;
+                    obj.a = 0; % Still waiting
                 end
+
             end
         end
         

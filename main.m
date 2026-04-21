@@ -35,7 +35,7 @@ title('Initialization...');
 % --- 5. Initialization before Loop ---
 currentTime = 0;
 lastPhase = -1; % Important for the first topology check
-dt = 0.02;      % Consistent time step
+dt = 0.01;      % Consistent time step
 tic;            % Start timer
 
 try
@@ -45,6 +45,54 @@ try
             disp('Animation window closed by user. Finalizing...');
             break; 
         end
+
+
+        % --- NEW: STABLE LEADER IDENTIFICATION ---
+        all_t = [currentGraph.Nodes.Obj.t_tilde];
+        [absoluteMaxT, potentialLeaderID] = max(all_t);
+        
+        % i am adding this epsilon because to prevent it from zig zag
+        % behaviour of being leaders 
+
+        epsilon = 0.05; % Hysteresis buffer (0.05 seconds)
+        global lastLeaderID
+
+        if isempty(lastLeaderID)
+            leaderID = potentialLeaderID;
+        else
+            % Logic: Only switch leader if the new one is 'epsilon' slower 
+            % than the current leader's time.
+            if (absoluteMaxT - all_t(lastLeaderID)) > epsilon
+                leaderID = potentialLeaderID;
+            else
+                leaderID = lastLeaderID;
+            end
+        end
+        lastLeaderID = leaderID; % Update for next iteration
+
+        % --- REACHABILITY CHECK (Using the stable leaderID) ---
+        D = distances(currentGraph);
+        reachableVector = D(:, leaderID);
+        isGloballyReachable = all(reachableVector < Inf);
+
+        % Color and Text logic
+        if isGloballyReachable
+            reachStr = 'YES'; reachCol = [0 0.6 0]; 
+        else
+            reachStr = 'NO'; reachCol = [0.8 0 0];
+        end
+
+        % Update Title
+        title(sprintf('Time: %.2fs | Leader: P%d (%.2fs) | Globally Reachable: %s', ...
+            currentTime, leaderID, all_t(leaderID), reachStr), 'Color', reachCol);
+
+        % Visual Highlight
+        hPlot.NodeColor = 'b'; 
+        highlight(hPlot, leaderID, 'NodeColor', reachCol, 'MarkerSize', 12);
+
+
+
+
 
         currentTime = s * dt;
 

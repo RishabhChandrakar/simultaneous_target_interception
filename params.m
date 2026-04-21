@@ -1,4 +1,4 @@
-global targetPos currentGraph phase_durations
+global targetPos currentGraph phase_durations_case2 phase_durations_case3
 
 n_robots = 5;
 targetPos = [0, 0]; % Interception at origin
@@ -7,7 +7,10 @@ targetPos = [0, 0]; % Interception at origin
 % Define the sequence of durations (in seconds)
 % Phase 0 lasts 2.5s, Phase 1 lasts 1.0s, Phase 2 lasts 4.0s
 
-phase_durations = [0.5, 1.2, 0.2, 0.7, 0.7, 0.3, 10];
+phase_durations_case2 = [0.5, 1.2, 0.2, 0.7, 0.7, 0.5, 10];
+
+phase_durations_case3 = [0.3, 0.8, 0.2, 0.6, 0.3, 0.3, 10];
+
 
 
 % Coordinates based on your specific input
