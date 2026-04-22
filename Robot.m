@@ -10,7 +10,7 @@ classdef Robot < handle
         a_ideal = 0      % Ideal lateral acceleration (a')
         t_tilde = 0      % Estimated time of interception
         distToTarget = 0 % Distance to target
-        isCaptured = false;
+        isCaptured = false;  % boolean to store whether robot has reached goal or not 
 
         % --- History Storage ---
         timeHistory = []
@@ -38,7 +38,8 @@ classdef Robot < handle
             obj.gamma = lambda - theta0;
             obj.vel = [cos(obj.gamma), sin(obj.gamma)] * obj.v;
 
-            %isCaptured
+            %isCaptured    to stop the simunaltion when robot reaches the
+            %goal
             isCaptured = false;
 
             % Initialize history with the starting position
@@ -77,7 +78,7 @@ classdef Robot < handle
             if abs(denom) > 1e-4
                 obj.t_tilde = (obj.distToTarget * obj.theta) / denom;
             else
-                % Limit case where theta is very small (L'Hopital's rule)
+                % theta is almost equal to sin(theta)
                 obj.t_tilde = obj.distToTarget / obj.v;
             end
         end
@@ -106,8 +107,9 @@ classdef Robot < handle
                 % I should now just follow my curve (a_ideal) to the target.
                 if obj.t_tilde >= (max_neighbor_t - 0.1)
                     obj.a = obj.a_ideal;
+
                 else
-                    obj.a = 0; % Still waiting
+                    obj.a = 0;     % moving in a straight line 
                 end
 
             end

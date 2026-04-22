@@ -32,135 +32,123 @@ axis(bounds); % Ensure you are using the axis limits from params.m
 xlabel('x'); ylabel('y');
 title('Initialization...');
 
+
 % --- 5. Initialization before Loop ---
 currentTime = 0;
-lastPhase = -1; % Important for the first topology check
-dt = 0.01;      % Consistent time step
-tic;            % Start timer
+lastPhase = -1; 
+lastLeaderID = []; % Initialize hysteresis variable
+robotAdded = false; 
+dt=0.02
+tic; 
 
 try
     for s = 1:sim_steps
-        % A. Check if the user closed the figure window
+        % A. Window Check: Exit if user closes the figure
         if ~ishandle(fig)
             disp('Animation window closed by user. Finalizing...');
             break; 
         end
 
+        % B. Update Simulation Time
+        currentTime = s * dt;
 
-        % --- NEW: STABLE LEADER IDENTIFICATION ---
+        % C. CASE 4: DYNAMIC NODE ADDITION (Check before logic/topology)
+        global simulation_case addedRobotData
+        if simulation_case == 4 && currentTime >= 1.0 && ~robotAdded
+            newBot = Robot(addedRobotData.id, addedRobotData.pos, ...
+                           addedRobotData.speed, addedRobotData.theta);
+            
+            newNodeTable = table(newBot, 'VariableNames', {'Obj'});
+            currentGraph = addnode(currentGraph, newNodeTable);
+            
+            n_robots = numnodes(currentGraph); % Update count
+            robotAdded = true;
+            
+            % Force a plot reset to include the new node visually
+            if ishandle(hPlot), delete(hPlot); end
+            hPlot = plot(currentGraph, 'XData', zeros(n_robots,1), 'YData', zeros(n_robots,1));
+            axis(bounds); hold on;
+            fprintf('Time %.2fs: Robot 6 joined the network.n', currentTime);
+        end
+
+        % D. TOPOLOGY UPDATE
+        % We update the graph structure BEFORE logic so robots see new neighbors
+        newEdges = getTopology(currentTime, n_robots);
+        currentGraph = digraph(newEdges(:,1), newEdges(:,2), [], currentGraph.Nodes);
+
+        % E. LOGIC & PHYSICS UPDATE
+        for i = 1:numnodes(currentGraph)
+            currentGraph.Nodes.Obj(i).updateLogic();
+        end
+        for i = 1:numnodes(currentGraph)
+            currentGraph.Nodes.Obj(i).updateStates(dt, currentTime);
+        end
+
+        % F. STABLE LEADER IDENTIFICATION (Hysteresis Logic)
         all_t = [currentGraph.Nodes.Obj.t_tilde];
         [absoluteMaxT, potentialLeaderID] = max(all_t);
-        
-        % i am adding this epsilon because to prevent it from zig zag
-        % behaviour of being leaders 
-
-        epsilon = 0.05; % Hysteresis buffer (0.05 seconds)
-        global lastLeaderID
+        epsilon = 0.05; 
 
         if isempty(lastLeaderID)
             leaderID = potentialLeaderID;
         else
-            % Logic: Only switch leader if the new one is 'epsilon' slower 
-            % than the current leader's time.
             if (absoluteMaxT - all_t(lastLeaderID)) > epsilon
                 leaderID = potentialLeaderID;
             else
                 leaderID = lastLeaderID;
             end
         end
-        lastLeaderID = leaderID; % Update for next iteration
+        lastLeaderID = leaderID;
 
-        % --- REACHABILITY CHECK (Using the stable leaderID) ---
+        % G. REACHABILITY CHECK
         D = distances(currentGraph);
-        reachableVector = D(:, leaderID);
-        isGloballyReachable = all(reachableVector < Inf);
-
-        % Color and Text logic
+        isGloballyReachable = all(D(:, leaderID) < Inf);
+        
         if isGloballyReachable
             reachStr = 'YES'; reachCol = [0 0.6 0]; 
         else
             reachStr = 'NO'; reachCol = [0.8 0 0];
         end
 
-        % Update Title
-        title(sprintf('Time: %.2fs | Leader: P%d (%.2fs) | Globally Reachable: %s', ...
-            currentTime, leaderID, all_t(leaderID), reachStr), 'Color', reachCol);
-
-        % Visual Highlight
-        hPlot.NodeColor = 'b'; 
-        highlight(hPlot, leaderID, 'NodeColor', reachCol, 'MarkerSize', 12);
-
-
-
-
-
-        currentTime = s * dt;
-
-        % 1. Determine Topology & Update Graph
-        % (Assuming getTopology updates the global currentPhase internally)
-        newEdges = getTopology(currentTime, n_robots);
-        currentGraph = digraph(newEdges(:,1), newEdges(:,2), [], currentGraph.Nodes);
-
-        % --- Step A: Logic Update ---
-        for i = 1:n_robots
-            currentGraph.Nodes.Obj(i).updateLogic();
-        end
-
-        % --- Step B: State Update ---
-        for i = 1:n_robots
-            currentGraph.Nodes.Obj(i).updateStates(dt, currentTime);
-        end
-
-        % --- Step C: Animation Update ---
+        % H. ANIMATION & FIREWALL
         allPos = vertcat(currentGraph.Nodes.Obj.pos);
-
-        % THE FIREWALL: Handle non-finite math errors
         if ~all(isfinite(allPos(:)))
             allPos(~isfinite(allPos)) = 0; 
         end
 
-        % 2. Update Graph Plot ONLY if the topology switched
-        % We check the global currentPhase set inside getTopology
+        % Redraw arrows if Phase changed, otherwise just move nodes
         global currentPhase
         if currentPhase ~= lastPhase
-            % Remove old plot and redraw to show new arrows
             if ishandle(hPlot), delete(hPlot); end 
-
             hPlot = plot(currentGraph, 'XData', allPos(:,1), 'YData', allPos(:,2), ...
-                'MarkerSize', 10, 'LineWidth', 1.5, 'NodeColor', 'b', 'EdgeColor', [0.4 0.4 0.4]);
-
-            title(['Time: ' num2str(currentTime, '%.2f') 's | Phase: ' num2str(currentPhase)]);
+                'MarkerSize', 10, 'LineWidth', 1.5, 'EdgeColor', [0.4 0.4 0.4]);
             lastPhase = currentPhase;
-
-            % Debugging output as you requested
-            fprintf('Switching to Phase %d at Time %.2fs\n', currentPhase, currentTime);
         else
-            % Just update positions for smooth movement
             hPlot.XData = allPos(:,1);
             hPlot.YData = allPos(:,2);
         end
 
-        % 3. Leave a breadcrumb trail
+        % Highlight Leader and Update Dynamic Title
+        highlight(hPlot, leaderID, 'NodeColor', reachCol, 'MarkerSize', 12);
+        title(sprintf('Time: %.2fs | Leader: P%d (%.2fs) | Reachable: %s | Phase: %d', ...
+              currentTime, leaderID, all_t(leaderID), reachStr, currentPhase), 'Color', reachCol);
+
+        % Leave path trail
         plot(allPos(:,1), allPos(:,2), 'k.', 'MarkerSize', 1);
 
-        % --- Step D: Exit Condition ---
+        % I. EXIT CONDITION
         if all([currentGraph.Nodes.Obj.isCaptured])
-            fprintf('\n[SUCCESS] All robots intercepted target at %.2fs\n', currentTime);
+            fprintf('\n[SUCCESS] Interception complete at %.2fs\n', currentTime);
             break; 
         end
 
-        % Force refresh
-        %drawnow limitrate;
-        drawnow;
+        drawnow; % Use 'drawnow limitrate' for faster performance if needed
     end
 
 catch ME
-    % If Ctrl+C is pressed or a code error occurs
     fprintf('\nSimulation stopped. Message: %s\n', ME.message);
 end
 
-% =====================================================
-% FINAL ACTION: ALWAYS SHOW RESULTS
-% =====================================================
+% FINAL ACTION
 disp('Generating final analysis plots...');
 showResults(currentGraph);
