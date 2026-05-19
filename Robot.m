@@ -126,7 +126,7 @@ classdef Robot < handle
             end
 
             % 2. CHECK CAPTURE CONDITION
-            % Since robots are fast (92m/s), we use a threshold of 2.0 meters
+            % Since robots are fast (92m/s), we use a threshold of 3.0 meters
             if obj.distToTarget < 3
                 obj.isCaptured = true;
                 obj.v = 0;           % Set speed to 0
